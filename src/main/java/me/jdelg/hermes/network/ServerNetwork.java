@@ -10,6 +10,7 @@ import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.BiConsumer;
@@ -37,10 +38,12 @@ public class ServerNetwork implements Network {
         if (serverSocket.isClosed())
             return;
 
-        Socket socket = serverSocket.accept();
+        try {
+            Socket socket = serverSocket.accept();
 
-        if (socket != null)
-            new Thread(() -> accept(socket)).start();
+            if (socket != null)
+                new Thread(() -> accept(socket)).start();
+        } catch (SocketException ignored) {}
 
         loop();
     }
