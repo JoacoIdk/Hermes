@@ -60,6 +60,11 @@ public class Hermes {
         queue.add(packet);
     }
 
+    public void send(List<InetAddress> addresses, Packet packet) {
+        for (InetAddress address : addresses)
+            send(address, packet);
+    }
+
     public void broadcast(Packet packet) {
         for (Queue<Packet> queue : queues.values())
             queue.add(packet);
