@@ -84,6 +84,18 @@ public class ServerNetwork implements Network {
         serverSocket.close();
     }
 
+    @SneakyThrows
+    @Override
+    public void disconnect(InetAddress address) {
+        Socket socket = sockets.get(address);
+
+        if (socket == null)
+            return;
+
+        if (!socket.isClosed())
+            socket.close();
+    }
+
     @Override
     public boolean started() {
         if (serverSocket == null)

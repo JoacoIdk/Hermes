@@ -9,6 +9,7 @@ import java.util.function.Consumer;
 public interface Network {
     void start(InetAddress address, int port);
     void stop();
+    void disconnect(InetAddress address);
     boolean started();
     void connected(Consumer<InetAddress> consumer);
     void disconnected(Consumer<InetAddress> consumer);

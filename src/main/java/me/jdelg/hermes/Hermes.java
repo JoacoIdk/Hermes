@@ -18,6 +18,8 @@ public class Hermes {
     private final Map<Integer, Class<? extends Packet>> packets;
     private final List<Receiver> receivers;
     private final Map<InetAddress, Queue<Packet>> queues;
+    private final Map<InetAddress, Packet> lastReceive;
+    private final Map<InetAddress, Packet> lastSend;
 
     public Hermes(InetAddress address, int port, Network network) {
         this.address = address;
@@ -26,9 +28,13 @@ public class Hermes {
         this.packets = new HashMap<>();
         this.receivers = new ArrayList<>();
         this.queues = new HashMap<>();
+        this.lastReceive = new HashMap<>();
+        this.lastSend = new HashMap<>();
 
         if (network.started())
             throw new IllegalStateException("Network has already been started");
+
+        registerPacket(0, ConnectionPacket.class);
 
         network.connected(this::connected);
         network.disconnected(this::disconnected);
@@ -43,11 +49,12 @@ public class Hermes {
     }
 
     public void registerAllPackets() {
-        registerPacket(0, IdentifyPacket.class);
-        registerPacket(1, StatusPacket.class);
-        registerPacket(2, CommandPacket.class);
-        registerPacket(3, MessagePacket.class);
-        registerPacket(4, BroadcastPacket.class);
+        registerPacket(1, IdentifyPacket.class);
+        registerPacket(2, AlivePacket.class);
+        registerPacket(3, StatusPacket.class);
+        registerPacket(4, CommandPacket.class);
+        registerPacket(5, MessagePacket.class);
+        registerPacket(6, BroadcastPacket.class);
     }
 
     public void stop() {
@@ -70,12 +77,48 @@ public class Hermes {
             queue.add(packet);
     }
 
+    public void disconnect(InetAddress address) {
+        ConnectionPacket connectionPacket = new ConnectionPacket();
+
+        connectionPacket.connected(false);
+        connectionPacket.graceful(true);
+
+        send(address, connectionPacket);
+
+        network.disconnect(address);
+    }
+
+    private void triggerReceivers(InetAddress address, Packet packet) {
+        for (Receiver receiver : receivers)
+            receiver.receivePacket(address, packet);
+    }
+
     private void connected(InetAddress address) {
         queues.put(address, new ArrayDeque<>());
+
+        ConnectionPacket connectionPacket = new ConnectionPacket();
+
+        connectionPacket.connected(true);
+        connectionPacket.graceful(true);
+
+        send(address, connectionPacket);
     }
 
     private void disconnected(InetAddress address) {
+        Packet packet = lastReceive.get(address);
+
+        if (packet != null && !(packet instanceof ConnectionPacket)) {
+            ConnectionPacket connectionPacket = new ConnectionPacket();
+
+            connectionPacket.connected(false);
+            connectionPacket.graceful(false);
+
+            triggerReceivers(address, connectionPacket);
+        }
+
         queues.remove(address);
+        lastReceive.remove(address);
+        lastSend.remove(address);
     }
 
     @SneakyThrows
@@ -88,8 +131,16 @@ public class Hermes {
 
             packet.read(input);
 
-            for (Receiver receiver : receivers)
-                receiver.receivePacket(address, packet);
+            if (!lastReceive.containsKey(address) && !(packet instanceof ConnectionPacket)) {
+                ConnectionPacket connectionPacket = new ConnectionPacket();
+
+                connectionPacket.connected(true);
+                connectionPacket.graceful(false);
+
+                triggerReceivers(address, packet);
+            }
+
+            triggerReceivers(address, packet);
         }
     }
 

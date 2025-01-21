@@ -5,8 +5,7 @@ import java.util.Arrays;
 public enum Status {
     ONLINE,
     OFFLINE,
-    STARTING,
-    STOPPING,
+    WHITELISTED,
     UNKNOWN;
 
     public static Status fromString(String name) {

@@ -12,19 +12,16 @@ import java.io.IOException;
 @Getter
 @Setter
 @NoArgsConstructor
-public class ConnectionPacket implements Packet {
-    private boolean connected;
-    private boolean graceful;
+public class AlivePacket implements Packet {
+    private long time;
 
     @Override
     public void read(DataInputStream input) throws IOException {
-        this.connected = input.readBoolean();
-        this.graceful = input.readBoolean();
+        this.time = input.readLong();
     }
 
     @Override
     public void write(DataOutputStream output) throws IOException {
-        output.writeBoolean(connected);
-        output.writeBoolean(graceful);
+        output.writeLong(time);
     }
 }
